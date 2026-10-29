@@ -105,7 +105,13 @@ tiktokConnection.on(eventName('GIFT', 'gift'), data => {
   const user = data?.user?.displayId || data?.user?.uniqueId || data?.uniqueId || 'Fã';
   const repeatCount = Math.max(1, Number(data?.repeatCount) || 1);
   const diamondCount = Math.max(1, Number(data?.diamondCount) || 1);
-  io.emit('gift', { user, giftName, diamondCount, repeatCount, timestamp: Date.now() });
+  const giftImageUrl = data?.gift?.image?.url_list?.[0]
+    || data?.gift?.image?.urlList?.[0]
+    || data?.giftPictureUrl
+    || data?.giftImageUrl
+    || null;
+  const giftId = Number(data?.gift?.gift_id ?? data?.giftId ?? data?.gift_id) || null;
+  io.emit('gift', { user, giftName, giftId, giftImageUrl, diamondCount, repeatCount, timestamp: Date.now() });
 });
 
 tiktokConnection.on(eventName('LIKE', 'like'), data => {
