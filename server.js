@@ -92,17 +92,37 @@ function eventName(key, fallback) {
   return WebcastEvent && WebcastEvent[key] ? WebcastEvent[key] : fallback;
 }
 
+function getActor(data, fallback = 'Espectador') {
+  const user = data?.user || data?.author || {};
+  const avatarUrl = user?.avatarThumb?.urlList?.[0]
+    || user?.avatarThumb?.url_list?.[0]
+    || user?.avatarMedium?.urlList?.[0]
+    || user?.avatarMedium?.url_list?.[0]
+    || user?.avatarLarger?.urlList?.[0]
+    || user?.avatarLarger?.url_list?.[0]
+    || user?.profilePicture?.urlList?.[0]
+    || user?.profilePicture?.url_list?.[0]
+    || user?.avatarUrl
+    || user?.avatar_url
+    || null;
+  return {
+    user: user?.displayId || user?.uniqueId || data?.uniqueId || fallback,
+    avatarUrl: typeof avatarUrl === 'string' && /^https:\/\//i.test(avatarUrl) ? avatarUrl : null
+  };
+}
+
 tiktokConnection.on(eventName('CHAT', 'chat'), data => {
-  const user = data?.user?.displayId || data?.user?.uniqueId || data?.uniqueId || 'Espectador';
+  const actor = getActor(data);
   const comment = String(data?.comment ?? data?.content ?? '');
-  io.emit('chat', { user, comment, timestamp: Date.now() });
+  io.emit('chat', { ...actor, comment, timestamp: Date.now() });
 });
 
 tiktokConnection.on(eventName('GIFT', 'gift'), data => {
   // Presentes em sequência só pontuam quando a sequência termina.
   if (data?.giftType === 1 && data?.repeatEnd === false) return;
   const giftName = data?.gift?.name || data?.giftName || 'Presente';
-  const user = data?.user?.displayId || data?.user?.uniqueId || data?.uniqueId || 'Fã';
+  const actor = getActor(data, 'Fã');
+  const { user } = actor;
   const repeatCount = Math.max(1, Number(data?.repeatCount) || 1);
   const diamondCount = Math.max(1, Number(data?.diamondCount) || 1);
   const giftImageUrl = data?.gift?.image?.url_list?.[0]
@@ -111,12 +131,13 @@ tiktokConnection.on(eventName('GIFT', 'gift'), data => {
     || data?.giftImageUrl
     || null;
   const giftId = Number(data?.gift?.gift_id ?? data?.giftId ?? data?.gift_id) || null;
-  io.emit('gift', { user, giftName, giftId, giftImageUrl, diamondCount, repeatCount, timestamp: Date.now() });
+  io.emit('gift', { ...actor, giftName, giftId, giftImageUrl, diamondCount, repeatCount, timestamp: Date.now() });
 });
 
 tiktokConnection.on(eventName('LIKE', 'like'), data => {
+  const actor = getActor(data);
   io.emit('like', {
-    user: data?.user?.displayId || data?.user?.uniqueId || 'Espectador',
+    ...actor,
     likeCount: Math.max(1, Number(data?.likeCount) || 1),
     totalLikeCount: Number(data?.totalLikeCount) || 0,
     timestamp: Date.now()
@@ -124,24 +145,15 @@ tiktokConnection.on(eventName('LIKE', 'like'), data => {
 });
 
 tiktokConnection.on(eventName('FOLLOW', 'follow'), data => {
-  io.emit('follow', {
-    user: data?.user?.displayId || data?.user?.uniqueId || 'Novo seguidor',
-    timestamp: Date.now()
-  });
+  io.emit('follow', { ...getActor(data, 'Novo seguidor'), timestamp: Date.now() });
 });
 
 tiktokConnection.on(eventName('SHARE', 'share'), data => {
-  io.emit('share', {
-    user: data?.user?.displayId || data?.user?.uniqueId || 'Espectador',
-    timestamp: Date.now()
-  });
+  io.emit('share', { ...getActor(data, 'Espectador'), timestamp: Date.now() });
 });
 
 tiktokConnection.on(eventName('MEMBER', 'member'), data => {
-  io.emit('member', {
-    user: data?.user?.displayId || data?.user?.uniqueId || 'Espectador',
-    timestamp: Date.now()
-  });
+  io.emit('member', { ...getActor(data, 'Espectador'), timestamp: Date.now() });
 });
 
 tiktokConnection.on('disconnected', () => {
