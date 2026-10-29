@@ -1,256 +1,49 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#080911">
-<title>Torre Live — Chat vs Creator</title>
-<script src="/socket.io/socket.io.js"></script>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#090a12"><title>Torre Live — Batalha da Live</title><script src="/socket.io/socket.io.js"></script>
 <style>
-:root{color-scheme:dark;--red:#ff335b;--blue:#00c8ff;--bg:#080911;--panel:rgba(10,14,28,.88)}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05060d;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-button{font:inherit;touch-action:manipulation;cursor:pointer}
-.game{position:relative;width:100%;height:100%;max-width:520px;margin:auto;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#20234b 0,#0b0d20 45%,#05060d 100%)}
-#arena{position:absolute;inset:0;width:100%;height:100%}
-.ui{position:absolute;inset:0;display:flex;flex-direction:column;pointer-events:none;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
-header,.scores,.controls,.feed,.bottom{pointer-events:auto}
-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 2px}
-.brand{font-weight:900;letter-spacing:.8px;font-size:13px}
-.status{font-size:10px;border:1px solid #565b72;background:#171a2c;border-radius:999px;padding:6px 9px;max-width:65%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.status.ok{border-color:#24d982;color:#74ffc0}.status.bad{border-color:#ff5574;color:#ff9caf}
-.scores{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center;margin-top:3px}
-.team{padding:8px 4px;border-radius:14px;background:var(--panel);border:1px solid #383c58;box-shadow:0 8px 22px #0005}
-.team.red{border-color:#8e2944}.team.blue{border-color:#17617b}
-.team-name{font-size:11px;letter-spacing:1.5px;font-weight:900}.red .team-name{color:var(--red)}.blue .team-name{color:var(--blue)}
-.score{font-size:clamp(28px,9vw,44px);line-height:1.15;font-weight:950;font-variant-numeric:tabular-nums}
-.vs{font-size:13px;font-weight:950;color:#ffe36c;text-shadow:0 0 12px #ffe36c}
-.subrow{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#d4d8f2;margin:8px 2px}
-.pill{background:#101326d9;border:1px solid #333852;border-radius:999px;padding:5px 8px}
-.timer{font-variant-numeric:tabular-nums;font-weight:900;color:#fff}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;margin-bottom:8px}
-.team-controls{background:#0a0d1bdc;border:1px solid #303651;border-radius:14px;padding:8px}
-.team-controls h3{font-size:11px;margin:0 0 7px;letter-spacing:1px}
-.team-controls.red h3{color:var(--red)}.team-controls.blue h3{color:var(--blue)}
-.btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.btns button,.bottom button{border:1px solid #434968;border-radius:9px;background:#1a1e35;color:white;padding:9px 4px;font-size:11px;font-weight:800}
-.btns button:active,.bottom button:active{transform:scale(.97);filter:brightness(1.3)}
-.btns .up{border-color:#257c5c}.btns .down{border-color:#84384d}
-.feed{background:#080b18e8;border:1px solid #292e47;border-radius:12px;padding:8px 10px;margin-bottom:8px;min-height:56px;max-height:90px;overflow:hidden}
-.feed-title{font-size:10px;color:#9ea6c8;letter-spacing:1px;margin-bottom:4px}
-#events{font-size:11px;line-height:1.45;color:#e8eaff;overflow-wrap:anywhere}
-.bottom{display:flex;gap:7px;margin-bottom:6px}.bottom button{flex:1;padding:9px 4px}
-.note{text-align:center;font-size:9px;color:#8d93b3;padding:0 0 3px}
-@media(min-height:780px){.controls{margin-bottom:16px}.team-controls{padding:10px}.btns button{padding:11px 4px}.feed{max-height:100px}}
-</style>
-</head>
-<body>
-<div class="game">
-<canvas id="arena" aria-label="Arena de torres do jogo"></canvas>
-<div class="ui">
-<header>
-<div class="brand">⚔️ TORRE LIVE</div>
-<div id="status" class="status">Conectando ao servidor…</div>
-</header>
-<section class="scores" aria-label="Placar">
-<div class="team red"><div class="team-name">CHAT</div><div id="chatScore" class="score">0</div></div>
-<div class="vs">VS</div>
-<div class="team blue"><div class="team-name">CREATOR</div><div id="creatorScore" class="score">0</div></div>
-</section>
-<div class="subrow"><span class="pill">🏆 Vitórias: <b id="chatWins">0</b> — <b id="creatorWins">0</b></span><span class="pill">⏱️ <span id="timer" class="timer">10:00</span></span></div>
-<div class="controls">
-<section class="team-controls red"><h3>🔴 CHAT</h3><div class="btns">
-<button class="up" data-team="chat" data-action="add" data-points="1">+1 teste</button>
-<button class="up" data-team="chat" data-action="add" data-points="10">+10 teste</button>
-<button class="down" data-team="chat" data-action="sub" data-points="5">−5 teste</button>
-<button data-team="chat" data-action="win">🏆 Vitória</button>
-</div></section>
-<section class="team-controls blue"><h3>🔵 CREATOR</h3><div class="btns">
-<button class="up" data-team="creator" data-action="add" data-points="1">+1 teste</button>
-<button class="up" data-team="creator" data-action="add" data-points="10">+10 teste</button>
-<button class="down" data-team="creator" data-action="sub" data-points="5">−5 teste</button>
-<button data-team="creator" data-action="win">🏆 Vitória</button>
-</div></section>
-</div>
-<section class="feed"><div class="feed-title">EVENTOS DA LIVE</div><div id="events">Aguardando chat e presentes…</div></section>
-<div class="bottom"><button id="pauseBtn">⏸ Pausar</button><button id="resetBtn">↻ Nova rodada</button></div>
-<div class="note">Teste manual serve para conferir o jogo; eventos reais dependem da conexão TikTok.</div>
-</div>
-</div>
+:root{--r:#ff343d;--b:#00bfff;--g:#19f58a}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080910;color:white;font-family:system-ui,Arial,sans-serif}button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}.game{position:relative;width:100%;height:100dvh;min-height:540px;max-width:760px;margin:auto;overflow:hidden;background:linear-gradient(90deg,#42171e,#21151f 49.6%,#101b30 50.4%,#10243e)}.game:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 25% 40%,#ff55551b,transparent 48%),radial-gradient(ellipse at 75% 40%,#16bfff22,transparent 48%),radial-gradient(#ffffff36 .7px,transparent 1px);background-size:auto,auto,71px 71px}.split{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#ffffff20}.city{position:absolute;left:0;right:0;bottom:24%;height:19%;opacity:.7;background:#09101e;clip-path:polygon(0 90%,4% 90%,4% 52%,7% 52%,7% 70%,11% 70%,11% 30%,14% 30%,14% 62%,18% 62%,18% 45%,21% 45%,21% 78%,26% 78%,26% 15%,29% 15%,29% 66%,34% 66%,34% 40%,39% 40%,39% 80%,44% 80%,44% 55%,48% 55%,48% 100%,0 100%)}.city.right{transform:scaleX(-1);background:#061a2b}.floor{position:absolute;bottom:0;height:30%;width:100%;background:repeating-linear-gradient(0deg,#ff3b4425 0 2px,transparent 2px 31px)}.floor:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(100deg,transparent 0 12%,#ff4a5120 12.2% 12.5%,transparent 12.7% 24%);transform:perspective(140px) rotateX(35deg);transform-origin:bottom}
+.status{position:absolute;z-index:8;top:calc(env(safe-area-inset-top,0px) + 13px);left:12px;max-width:calc(100% - 205px);font-size:10px;background:#080910d9;border:1px solid #ffffff28;border-radius:20px;padding:7px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#eee}.status.ok{color:#5dffb0;border-color:#2bd88c}.status.bad{color:#ffb4ba;border-color:#ff5967}.header{position:absolute;top:env(safe-area-inset-top,0px);right:10px;display:flex;gap:9px;z-index:8;padding:8px 0}.round{border:0;border-radius:50%;width:52px;height:52px;background:#080910e8;box-shadow:0 4px 15px #0004;font-size:25px;display:grid;place-items:center}
+.scores{position:absolute;z-index:4;top:calc(env(safe-area-inset-top,0px) + 76px);left:12%;right:12%;display:grid;grid-template-columns:1fr 35px 1fr;text-align:center}.name{font-size:clamp(22px,5.5vw,37px);font-weight:1000;letter-spacing:-1px;line-height:1.2;text-shadow:2px 3px #000,-1px -1px #fff}.name.r{color:#ff4148}.name.b{color:#299aff}.score{font-size:clamp(46px,12vw,76px);font-weight:1000;line-height:1.05;letter-spacing:-3px;text-shadow:0 5px #000;font-variant-numeric:tabular-nums}.vs{font-size:clamp(23px,6vw,38px);font-weight:1000;margin-top:41px;text-shadow:0 4px #000}.wins{display:inline-flex;gap:5px;align-items:center;justify-content:center;margin-top:8px;padding:7px 12px;border:1px solid #ffffff70;background:#080910e8;border-radius:24px;font-weight:900;font-size:12px;white-space:nowrap}.rule{position:absolute;top:calc(env(safe-area-inset-top,0px) + 209px);left:0;right:0;text-align:center;z-index:4;font-size:10px;font-weight:800;color:#e4e6ed;text-shadow:0 2px 4px #000}.multi{position:absolute;top:calc(env(safe-area-inset-top,0px) + 250px);left:35%;right:35%;z-index:4;text-align:center;font-weight:1000;font-size:clamp(22px,5vw,36px);color:#27f78c;text-shadow:2px 3px #064c31,-1px -1px #b9ffd6;white-space:nowrap}.progress{height:6px;margin:5px auto 0;width:min(160px,30vw);border-radius:6px;background:#111;border:1px solid #ffffff50;overflow:hidden}.progress span{display:block;width:30%;height:100%;background:#21e878}
+.rails{position:absolute;z-index:5;left:5px;right:5px;top:calc(env(safe-area-inset-top,0px) + 280px);bottom:7%;display:flex;justify-content:space-between;pointer-events:none}.rail{width:62px;display:flex;flex-direction:column;justify-content:space-around;align-items:center;gap:2px}.gift{width:100%;min-height:48px;padding:2px 0;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;text-shadow:0 2px 3px #000;filter:drop-shadow(0 2px 2px #0008)}.emoji{font-size:clamp(27px,7vw,42px);line-height:1.05;filter:drop-shadow(0 1px 1px #000)}.label{font-size:10px;line-height:1.1;font-weight:1000;text-transform:uppercase}.points{font-size:14px;color:var(--g);font-weight:1000;line-height:1.2}.negative .points{color:#ff6875}.gift:active{transform:scale(.9)}
+.towers{position:absolute;z-index:3;left:13%;right:13%;bottom:0;height:43%;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}.tower{position:relative;width:31%;height:var(--h,76%);min-height:20%;transition:height .4s;filter:drop-shadow(0 5px 2px #0008)}.tower.r{--face:#ed2633;--side:#9e1020;--top:#ff9b8c}.tower.b{--face:#168edc;--side:#07588e;--top:#8edbff}.blocks{position:absolute;inset:15% 0 0;display:flex;flex-direction:column-reverse;overflow:hidden}.block{flex:1 0 7.5%;background:linear-gradient(90deg,#ffffff22,transparent 30%),var(--face);border:2px solid #11131b;position:relative}.block:after{content:"";position:absolute;right:-12px;top:-2px;bottom:-2px;width:12px;background:var(--side);border:2px solid #11131b;transform:skewY(-32deg);transform-origin:left}.roof{position:absolute;top:0;left:-12%;width:112%;height:18%;background:var(--top);border:3px solid #11131b;transform:skewY(10deg);z-index:2}.tower.b .roof{transform:skewY(-10deg)}.bubbles{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}.bubble{position:absolute;font-size:30px;animation:floatup 2.6s ease-out forwards;filter:drop-shadow(0 2px 2px #000)}@keyframes floatup{0%{transform:translateY(20px) scale(.6);opacity:0}15%{opacity:1}100%{transform:translateY(-180px) rotate(15deg) scale(1.15);opacity:0}}.feed{position:absolute;z-index:9;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);left:22%;right:22%;min-height:34px;max-height:70px;border-radius:20px;background:#090b16d9;border:1px solid #ffffff20;display:flex;align-items:center;justify-content:center;padding:7px 10px;text-align:center;font-size:10px;overflow:hidden}
+@media(max-height:700px){.scores{top:calc(env(safe-area-inset-top,0px) + 65px)}.rule{top:calc(env(safe-area-inset-top,0px) + 185px)}.multi{top:calc(env(safe-area-inset-top,0px) + 220px)}.rails{top:calc(env(safe-area-inset-top,0px) + 250px);bottom:6%}.towers{height:40%}.emoji{font-size:28px}.label{font-size:9px}.points{font-size:12px}.round{width:45px;height:45px}}@media(min-width:600px){.scores{left:18%;right:18%}.towers{left:20%;right:20%}.rails{left:18px;right:18px}.rail{width:75px}}
+</style></head>
+<body><main class="game" id="game"><div class="split"></div><div class="city"></div><div class="city right"></div><div class="floor"></div>
+<div class="status" id="status">Conectando ao servidor…</div><div class="header"><button class="round" id="viewBtn" aria-label="Visualização">▦</button><button class="round" id="pauseBtn" aria-label="Pausar">Ⅱ</button><button class="round" id="resetBtn" aria-label="Nova rodada">×</button></div>
+<section class="scores"><div><div class="name r">CHAT</div><div class="score" id="chatScore">0</div><div class="wins">VITÓRIAS <span id="chatWins">0</span></div></div><div class="vs">VS</div><div><div class="name b">CREATOR</div><div class="score" id="creatorScore">0</div><div class="wins">VITÓRIAS <span id="creatorWins">0</span></div></div></section>
+<div class="rule"><span id="timer">10:00</span> • 1 BLOCO = 1 PONTO</div><div class="multi">2X TUDO<div class="progress"><span id="progress"></span></div></div>
+<div class="rails"><div class="rail">
+<button class="gift" data-team="chat" data-points="1" data-emoji="🟦"><span class="emoji">🟦</span><span class="label">FREE GROW</span><span class="points">+1</span></button>
+<button class="gift" data-team="chat" data-points="10" data-emoji="🌹"><span class="emoji">🌹</span><span class="label">SUBIR</span><span class="points">+10</span></button>
+<button class="gift" data-team="chat" data-points="30" data-emoji="🫶"><span class="emoji">🫶</span><span class="label">SUBIR</span><span class="points">+30</span></button>
+<button class="gift negative" data-team="chat" data-points="-20" data-emoji="🍩"><span class="emoji">🍩</span><span class="label">DERRUBAR</span><span class="points">−20</span></button>
+<button class="gift" data-team="chat" data-points="25" data-emoji="🪄"><span class="emoji">🪄</span><span class="label">ROUBAR</span><span class="points">+25</span></button>
+<button class="gift" data-team="chat" data-points="0" data-emoji="💥"><span class="emoji">💥</span><span class="label">ZERADO!</span></button>
+<button class="gift" data-team="chat" data-action="win" data-emoji="🦊"><span class="emoji">🦊</span><span class="label">VITÓRIA</span><span class="points">+1 VITÓRIA</span></button>
+<button class="gift negative" data-team="chat" data-action="lose" data-emoji="🎟️"><span class="emoji">🎟️</span><span class="label">TIRAR</span><span class="points">−1 VITÓRIA</span></button></div>
+<div class="rail">
+<button class="gift" data-team="creator" data-points="1" data-emoji="🟦"><span class="emoji">🟦</span><span class="label">FREE GROW</span><span class="points">+1</span></button>
+<button class="gift" data-team="creator" data-points="10" data-emoji="🎵"><span class="emoji">🎵</span><span class="label">SUBIR</span><span class="points">+10</span></button>
+<button class="gift" data-team="creator" data-points="30" data-emoji="🍪"><span class="emoji">🍪</span><span class="label">SUBIR</span><span class="points">+30</span></button>
+<button class="gift negative" data-team="creator" data-points="-20" data-emoji="🍩"><span class="emoji">🍩</span><span class="label">DERRUBAR</span><span class="points">−20</span></button>
+<button class="gift" data-team="creator" data-points="25" data-emoji="👑"><span class="emoji">👑</span><span class="label">ROUBAR</span><span class="points">+25</span></button>
+<button class="gift" data-team="creator" data-points="0" data-emoji="💥"><span class="emoji">💥</span><span class="label">ZERADO!</span></button>
+<button class="gift" data-team="creator" data-action="win" data-emoji="🦈"><span class="emoji">🦈</span><span class="label">VITÓRIA</span><span class="points">+1 VITÓRIA</span></button>
+<button class="gift negative" data-team="creator" data-action="lose" data-emoji="🌠"><span class="emoji">🌠</span><span class="label">TIRAR</span><span class="points">−1 VITÓRIA</span></button></div></div>
+<div class="towers"><div class="tower r" id="chatTower"><div class="roof"></div><div class="blocks" id="chatBlocks"></div></div><div class="tower b" id="creatorTower"><div class="roof"></div><div class="blocks" id="creatorBlocks"></div></div></div><div class="bubbles" id="bubbles"></div><div class="feed" id="feed">Aguardando eventos da LIVE…</div></main>
 <script>
-(() => {
-'use strict';
-const $ = id => document.getElementById(id);
-const state = { chat:0, creator:0, chatWins:0, creatorWins:0, seconds:600, paused:false, roundEnded:false };
-const statusEl = $('status');
-const canvas = $('arena');
-const ctx = canvas.getContext('2d');
-let width = 0, height = 0, dpr = 1, animationId = 0;
-let socket = null;
-let timerInterval = null;
-const recentEvents = [];
-
-function setStatus(message, ok=false) {
-  statusEl.textContent = message;
-  statusEl.classList.toggle('ok', ok);
-  statusEl.classList.toggle('bad', !ok);
-}
-function addEvent(message) {
-  recentEvents.unshift(message);
-  recentEvents.splice(4);
-  $('events').innerHTML = recentEvents.map(text => '<div></div>').join('');
-  [...$('events').children].forEach((el, i) => { el.textContent = recentEvents[i]; });
-}
-function renderScores() {
-  $('chatScore').textContent = state.chat.toLocaleString('pt-BR');
-  $('creatorScore').textContent = state.creator.toLocaleString('pt-BR');
-  $('chatWins').textContent = state.chatWins;
-  $('creatorWins').textContent = state.creatorWins;
-  draw();
-}
-function addScore(team, points, reason) {
-  if (state.roundEnded || !['chat','creator'].includes(team)) return;
-  const key = team === 'chat' ? 'chat' : 'creator';
-  state[key] = Math.max(0, state[key] + Math.round(points));
-  addEvent((team === 'chat' ? '🔴 ' : '🔵 ') + reason + ' (+' + Math.round(points) + ')');
-  renderScores();
-}
-function finishRound() {
-  if (state.roundEnded) return;
-  state.roundEnded = true;
-  if (state.chat === state.creator) addEvent('⏱️ Rodada empatada!');
-  else if (state.chat > state.creator) { state.chatWins++; addEvent('🏆 CHAT venceu a rodada!'); }
-  else { state.creatorWins++; addEvent('🏆 CREATOR venceu a rodada!'); }
-  $('pauseBtn').textContent = '▶ Continuar';
-  state.paused = true;
-  renderScores();
-}
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60), s = seconds % 60;
-  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-}
-function renderTimer() { $('timer').textContent = formatTime(state.seconds); }
-function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    if (state.paused || state.roundEnded) return;
-    if (state.seconds > 0) state.seconds--;
-    renderTimer();
-    if (state.seconds <= 0) finishRound();
-  }, 1000);
-}
-function resetRound() {
-  state.chat = 0; state.creator = 0; state.seconds = 600;
-  state.paused = false; state.roundEnded = false;
-  $('pauseBtn').textContent = '⏸ Pausar';
-  recentEvents.length = 0;
-  addEvent('🔄 Nova rodada iniciada — 10 minutos.');
-  renderTimer(); renderScores();
-}
-document.querySelectorAll('[data-team]').forEach(button => {
-  button.addEventListener('click', () => {
-    const team = button.dataset.team, action = button.dataset.action;
-    if (action === 'win') {
-      if (team === 'chat') state.chatWins++; else state.creatorWins++;
-      addEvent('🏆 Vitória de teste para ' + team.toUpperCase());
-      renderScores(); return;
-    }
-    const points = Number(button.dataset.points) || 0;
-    addScore(team, action === 'sub' ? -points : points, 'Teste manual');
-  });
-});
-$('pauseBtn').addEventListener('click', () => {
-  if (state.roundEnded) { resetRound(); return; }
-  state.paused = !state.paused;
-  $('pauseBtn').textContent = state.paused ? '▶ Continuar' : '⏸ Pausar';
-});
-$('resetBtn').addEventListener('click', resetRound);
-
-function connectSocket() {
-  if (typeof window.io !== 'function') {
-    setStatus('Servidor sem Socket.IO');
-    addEvent('Não foi possível carregar Socket.IO.');
-    return;
-  }
-  socket = window.io({ reconnection: true, reconnectionAttempts: Infinity, timeout: 10000 });
-  socket.on('connect', () => addEvent('Conectado ao servidor do jogo.'));
-  socket.on('disconnect', () => setStatus('Servidor desconectado'));
-  socket.on('connect_error', () => setStatus('Falha ao acessar servidor'));
-  socket.on('connection-status', data => setStatus(data?.message || 'Status desconhecido', Boolean(data?.connected)));
-  socket.on('server-ready', data => { if (data?.username) addEvent('Monitorando @' + data.username); });
-  socket.on('chat', data => {
-    const user = String(data?.user || 'Espectador').slice(0,40);
-    const comment = String(data?.comment || '').slice(0,180);
-    addEvent('💬 @' + user + ': ' + comment);
-    const text = comment.toLowerCase();
-    if (/\b(creator|criador|azul)\b/.test(text)) addScore('creator', 1, 'Comentário de @' + user);
-    else addScore('chat', 1, 'Comentário de @' + user);
-  });
-  socket.on('gift', data => {
-    const user = String(data?.user || 'Fã').slice(0,40);
-    const gift = String(data?.giftName || 'Presente').slice(0,50);
-    const diamonds = Math.max(1, Math.min(1000, Number(data?.diamondCount) || 1));
-    const repeats = Math.max(1, Math.min(100, Number(data?.repeatCount) || 1));
-    addScore('creator', Math.min(1000, diamonds * repeats), '🎁 ' + gift + ' de @' + user);
-  });
-  socket.on('like', data => addEvent('❤️ Curtidas de @' + String(data?.user || 'espectador').slice(0,35) + ' (não pontua)'));
-  socket.on('follow', data => addEvent('➕ Novo seguidor: @' + String(data?.user || 'espectador').slice(0,35)));
-  socket.on('share', data => addEvent('↗️ Live compartilhada por @' + String(data?.user || 'espectador').slice(0,35)));
-  socket.on('member', data => addEvent('👋 Entrou: @' + String(data?.user || 'espectador').slice(0,35)));
-}
-function resize() {
-  const rect = canvas.getBoundingClientRect();
-  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  width = rect.width; height = rect.height;
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  draw();
-}
-function polygon(points, fill, stroke) {
-  ctx.beginPath(); points.forEach((p,i) => i ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]));
-  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
-  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
-}
-function tower(cx, base, score, main, dark, light) {
-  const towerHeight = Math.min(height * .42, 48 + Math.log2(score + 1) * 15);
-  const blockH = 13, frontW = Math.min(66, width * .17), side = 12;
-  for (let y = 0; y < towerHeight; y += blockH) {
-    const by = base - y - blockH;
-    polygon([[cx-frontW/2,by],[cx-frontW/2+side,by-7],[cx+frontW/2+side,by-7],[cx+frontW/2,by]],light,'#070913');
-    polygon([[cx+frontW/2,by],[cx+frontW/2+side,by-7],[cx+frontW/2+side,by+blockH-7],[cx+frontW/2,by+blockH]],dark,'#070913');
-    ctx.fillStyle = main; ctx.fillRect(cx-frontW/2,by,frontW,blockH);
-    ctx.strokeStyle = '#070913'; ctx.lineWidth = 1.5; ctx.strokeRect(cx-frontW/2,by,frontW,blockH);
-  }
-}
-function draw() {
-  if (!ctx || !width || !height) return;
-  ctx.clearRect(0,0,width,height);
-  const horizon = height * .47;
-  const sky = ctx.createLinearGradient(0,0,0,height);
-  sky.addColorStop(0,'#10142c'); sky.addColorStop(.58,'#25234d'); sky.addColorStop(1,'#080a18');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,width,height);
-  ctx.fillStyle='#ff4e85';ctx.shadowColor='#ff4e85';ctx.shadowBlur=22;
-  ctx.beginPath();ctx.arc(width/2,horizon-20,Math.min(width*.16,58),0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-  ctx.save();ctx.beginPath();ctx.rect(0,horizon,width,height-horizon);ctx.clip();
-  for(let i=0;i<10;i++){
-    const y=horizon+i*i*2.8;ctx.strokeStyle='rgba(0,220,255,'+(0.12+i*.012)+')';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();
-  }
-  for(let i=-10;i<=10;i++){
-    ctx.strokeStyle='rgba(0,220,255,.22)';ctx.beginPath();ctx.moveTo(width/2,horizon);ctx.lineTo(width/2+i*width*.12,height);ctx.stroke();
-  }
-  ctx.restore();
-  const base=height*.79;
-  tower(width*.29,base,state.chat,'#ff335b','#9c1839','#ff9ab0');
-  tower(width*.71,base,state.creator,'#00c8ff','#00668d','#a2efff');
-  ctx.fillStyle='#070914';ctx.fillRect(0,base,width,height-base);
-  ctx.strokeStyle='#5a628e';ctx.beginPath();ctx.moveTo(0,base);ctx.lineTo(width,base);ctx.stroke();
-  ctx.fillStyle='#fff';ctx.font='bold 10px system-ui';ctx.textAlign='center';
-  ctx.fillText('CHAT',width*.29,base+17);ctx.fillText('CREATOR',width*.71,base+17);
-}
-window.addEventListener('resize', resize);
-resize(); renderTimer(); renderScores(); startTimer(); connectSocket();
-})();
-</script>
-</body>
-</html>
+(()=>{'use strict';const $=id=>document.getElementById(id);const s={chat:0,creator:0,chatWins:0,creatorWins:0,seconds:600,paused:false,ended:false,double:true};let socket=null,feedTimer=null;
+function announce(t){$('feed').textContent=t;clearTimeout(feedTimer);feedTimer=setTimeout(()=>$('feed').textContent='Aguardando eventos da LIVE…',4500)}
+function status(t,ok=false){$('status').textContent=t;$('status').classList.toggle('ok',ok);$('status').classList.toggle('bad',!ok)}
+function fmt(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function floatEmoji(team,emoji){const e=document.createElement('span');e.className='bubble';e.textContent=emoji||'✨';e.style.left=(team==='chat'?12+Math.random()*28:60+Math.random()*28)+'%';e.style.top=(55+Math.random()*30)+'%';$('bubbles').appendChild(e);setTimeout(()=>e.remove(),2700)}
+function render(){$('chatScore').textContent=s.chat.toLocaleString('pt-BR');$('creatorScore').textContent=s.creator.toLocaleString('pt-BR');$('chatWins').textContent=s.chatWins;$('creatorWins').textContent=s.creatorWins;$('timer').textContent=fmt(s.seconds);const total=Math.max(s.chat,s.creator,1);$('chatTower').style.setProperty('--h',(18+s.chat/total*65)+'%');$('creatorTower').style.setProperty('--h',(18+s.creator/total*65)+'%');$('progress').style.width=(s.double?Math.min(100,25+(s.chat+s.creator)%300/4):0)+'%';['chat','creator'].forEach(t=>{const el=$(t+'Blocks');el.innerHTML='';const n=Math.min(22,Math.max(3,Math.ceil(s[t]/10)));for(let i=0;i<n;i++){const b=document.createElement('div');b.className='block';el.appendChild(b)}})}
+function score(team,points,reason,emoji){if(s.ended)return;let n=Math.round(Number(points)||0);if(s.double&&n>0)n*=2;s[team]=Math.max(0,s[team]+n);if(emoji)floatEmoji(team,emoji);announce((team==='chat'?'🔴 CHAT':'🔵 CREATOR')+' • '+reason+(n?' ('+(n>0?'+':'')+n+')':''));render()}
+function finish(){if(s.ended)return;s.ended=true;s.paused=true;if(s.chat>s.creator){s.chatWins++;announce('🏆 CHAT venceu a rodada!')}else if(s.creator>s.chat){s.creatorWins++;announce('🏆 CREATOR venceu a rodada!')}else announce('🤝 Rodada empatada!');$('pauseBtn').textContent='▶';render()}
+function reset(){s.chat=0;s.creator=0;s.seconds=600;s.paused=false;s.ended=false;s.double=true;$('pauseBtn').textContent='Ⅱ';announce('🔄 Nova rodada — 10 minutos');render()}
+document.querySelectorAll('.gift').forEach(b=>b.addEventListener('click',()=>{const t=b.dataset.team,emoji=b.dataset.emoji;if(b.dataset.action==='win'){s[t+'Wins']++;announce('🏆 Vitória adicionada para '+t.toUpperCase());render();return}if(b.dataset.action==='lose'){s[t+'Wins']=Math.max(0,s[t+'Wins']-1);announce('Vitória removida de '+t.toUpperCase());render();return}const n=Number(b.dataset.points)||0;if(n===0){s[t]=0;floatEmoji(t,emoji);announce('💥 Torre '+t.toUpperCase()+' zerada!');render();return}score(t,n,'teste manual',emoji)}));
+$('pauseBtn').addEventListener('click',()=>{if(s.ended){reset();return}s.paused=!s.paused;$('pauseBtn').textContent=s.paused?'▶':'Ⅱ';announce(s.paused?'Jogo pausado':'Jogo retomado')});$('resetBtn').addEventListener('click',reset);$('viewBtn').addEventListener('click',()=>{$('game').style.filter=$('game').style.filter?'':'saturate(1.25)';announce('Efeito visual alternado')});
+setInterval(()=>{if(s.paused||s.ended)return;if(s.seconds>0)s.seconds--;if(s.seconds<=0)finish();else render()},1000);
+function connect(){if(typeof window.io!=='function'){status('Socket.IO indisponível');return}socket=window.io({reconnection:true,timeout:10000});socket.on('connect',()=>announce('Conectado ao servidor do jogo'));socket.on('disconnect',()=>status('Servidor desconectado'));socket.on('connect_error',()=>status('Falha no servidor'));socket.on('connection-status',d=>status(d?.message||'Status desconhecido',Boolean(d?.connected)));socket.on('server-ready',d=>{if(d?.username)announce('Monitorando @'+d.username)});socket.on('chat',d=>{const u=String(d?.user||'Espectador').slice(0,35),m=String(d?.comment||'').slice(0,100),t=/\b(creator|criador|azul)\b/i.test(m)?'creator':'chat';score(t,1,'💬 @'+u,'💬')});socket.on('gift',d=>{const u=String(d?.user||'Fã').slice(0,35),name=String(d?.giftName||'Presente').slice(0,40),diamonds=Math.min(1000,Math.max(1,Number(d?.diamondCount)||1)),repeat=Math.min(100,Math.max(1,Number(d?.repeatCount)||1));score('creator',diamonds*repeat,'🎁 '+name+' de @'+u,'🎁')});socket.on('like',d=>announce('❤️ Curtidas de @'+String(d?.user||'espectador').slice(0,30)));socket.on('follow',d=>announce('➕ Novo seguidor: @'+String(d?.user||'espectador').slice(0,30)));socket.on('share',d=>announce('↗️ Compartilhamento de @'+String(d?.user||'espectador').slice(0,30)));socket.on('member',d=>announce('👋 Entrou: @'+String(d?.user||'espectador').slice(0,30)))}
+render();connect()})();
+</script></body></html>
