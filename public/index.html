@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Livecade: CHAT vs CREATOR</title>
+    <!-- CONEXÃO SOCKET.IO COM O SEU SERVER.JS -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Arial Black', Impact, sans-serif;
+        }
+
+        body {
+            background: #020207;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .arcade-container {
+            position: relative;
+            width: 100vw;
+            max-width: 440px;
+            height: 100vh;
+            max-height: 920px;
+            overflow: hidden;
+            background: #080911;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
+        }
+
+        #gameCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 14px 4px 14px;
+            pointer-events: auto;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(20, 24, 38, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        .scoreboard {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0 20px;
+        }
+
+        .team-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 120px;
+        }
+
+        .team-label {
+            font-size: 26px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .label-chat {
+            color: #ff3355;
+            text-shadow: 
+                -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff,
+                -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000,
+                0 0 15px rgba(255, 51, 85, 0.8);
+        }
+
+        .label-creator {
+            color: #00d4ff;
+            text-shadow: 
+                -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff,
+                -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000,
+                0 0 15px rgba(0, 212, 255, 0.8);
+        }
+
+        .score-val {
+            font-size: 48px;
+            font-weight: 900;
+            color: #ffffff;
+            line-height: 1;
+            margin-top: 2px;
+            text-shadow: 
+                -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000,
+                0 6px 12px rgba(0, 0, 0, 0.9);
+        }
+
+        .vs-text {
+            position: absolute;
+            left: 50%;
+            top: 14px;
+            transform: translateX(-50%);
+            font-size: 22px;
+            font-style: italic;
+            color: #fff;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 12px #ffdd00;
+        }
+
+        .rule-badge {
+            position: absolute;
+            left: 50%;
+            top: 44px;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 16, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ddd;
+            font-size: 8px;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .wins-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 24px 0 24px;
+        }
+
+        .win-pill {
+            background: rgba(8, 8, 14, 0.85);
+            border-radius: 20px;
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.7);
+        }
+
+        .win-chat {
+            border: 1.5px solid #ff2255;
+            box-shadow: 0 0 10px rgba(255, 34, 85, 0.4);
+        }
+
+        .win-creator {
+            border: 1.5px solid #00c3ff;
+            box-shadow: 0 0 10px rgba(0, 195, 255, 0.4);
+        }
+
+        .win-counter {
+            background: #ffffff;
+            color: #000;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 0 4px;
+        }
+
+        .multiplier-hub {
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .mult-glow-text {
+            color: #2eff7b;
+            font-size: 20px;
+            letter-spacing: 1px;
+            text-shadow: 
+                -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+                0 0 16px #2eff7b;
+            animation: pulseGlow 0.8s infinite alternate ease-in-out;
+        }
+
+        .mult-progress-bar {
+            width: 76px;
+            height: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(46, 255, 123, 0.5);
+            border-radius: 4px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+
+        .mult-progress-fill {
+            width: 70%;
+            height: 100%;
+            background: #2eff7b;
+            box-shadow: 0 0 8px #2eff7b;
+            transition: width 0.15s linear;
+        }
+
+        .actions-side {
+            position: absolute;
+            top: 115px;
+            bottom: 50px;
+            width: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            pointer-events: auto;
+        }
+
+        .actions-left { left: 8px; }
+        .actions-right { right: 8px; }
+
+        .btn-action {
+            background: rgba(14, 16, 26, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 4px 2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(3px);
+            transition: transform 0.08s, background 0.15s;
+        }
+
+        .btn-action:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-action .icon {
+            font-size: 22px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+        }
+
+        .btn-action .name {
+            font-size: 8px;
+            color: #ddd;
+            margin-top: 1px;
+            text-transform: uppercase;
+            text-shadow: 0 1px 2px #000;
+        }
+
+        .val-pos {
+            color: #2fff77;
+            font-size: 9.5px;
+            font-weight: 900;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #2fff77;
+        }
+
+        .val-neg {
+            color: #ff3355;
+            font-size: 9.5px;
+            font-weight: 900;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #ff3355;
+        }
+
+        .pop-score {
+            position: absolute;
+            font-size: 16px;
+            font-weight: 900;
+            pointer-events: none;
+            animation: popFly 0.85s forwards cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            z-index: 50;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+        }
+
+        @keyframes popFly {
+            0% { opacity: 0; transform: translateY(10px) scale(0.5); }
+            20% { opacity: 1; transform: translateY(-5px) scale(1.3); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1); }
+        }
+
+        @keyframes pulseGlow {
+            from { transform: scale(1); filter: brightness(1); }
+            to { transform: scale(1.08); filter: brightness(1.3); }
+        }
+
+        .livecade-logo {
+            position: absolute;
+            bottom: 8px;
+            right: 14px;
+            font-size: 11px;
+            font-family: sans-serif;
+            color: rgba(255, 255, 255, 0.35);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="arcade-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="ui-layer">
+            <div class="top-bar">
+                <div class="icon-btn">⊞</div>
+                <div class="icon-btn">⏸</div>
+                <div class="icon-btn">✕</div>
+            </div>
+
+            <div class="scoreboard">
+                <div class="team-box">
+                    <div class="team-label label-chat">CHAT</div>
+                    <div class="score-val" id="valChat">0</div>
+                </div>
+
+                <div class="vs-text">VS</div>
+                <div class="rule-badge">9999999 BLOCOS = 1 VITÓRIA</div>
+
+                <div class="team-box">
+                    <div class="team-label label-creator">CREATOR</div>
+                    <div class="score-val" id="valCreator">0</div>
+                </div>
+            </div>
+
+            <div class="wins-row">
+                <div class="win-pill win-chat">
+                    <span>VITÓRIAS</span>
+                    <span class="win-counter" id="winsChat">0</span>
+                </div>
+                <div class="win-pill win-creator">
+                    <span>VITÓRIAS</span>
+                    <span class="win-counter" id="winsCreator">0</span>
+                </div>
+            </div>
+
+            <div class="multiplier-hub">
+                <div class="mult-glow-text">2X TUDO</div>
+                <div class="mult-progress-bar">
+                    <div class="mult-progress-fill" id="multProgress"></div>
+                </div>
+            </div>
+
+            <!-- BOTÕES: COLUNA CHAT -->
+            <div class="actions-side actions-left">
+                <div class="btn-action" id="btn-chat-grow" onclick="exec('chat', 'add', 1, this)">
+                    <div class="icon">💬</div>
+                    <div class="name">FREE GROW</div>
+                    <div class="val-pos">+1</div>
+                </div>
+                <div class="btn-action" id="btn-chat-rose" onclick="exec('chat', 'add', 10, this)">
+                    <div class="icon">🌹</div>
+                    <div class="name">SUBIR</div>
+                    <div class="val-pos">+10</div>
+                </div>
+                <div class="btn-action" id="btn-chat-heart" onclick="exec('chat', 'add', 30, this)">
+                    <div class="icon">🫰</div>
+                    <div class="name">SUBIR</div>
+                    <div class="val-pos">+30</div>
+                </div>
+                <div class="btn-action" id="btn-chat-donut" onclick="exec('chat', 'sub', 20, this)">
+                    <div class="icon">🍩</div>
+                    <div class="name">DERRUBAR</div>
+                    <div class="val-neg">-20</div>
+                </div>
+                <div class="btn-action" id="btn-chat-bow" onclick="exec('chat', 'steal', 25, this)">
+                    <div class="icon">🏹</div>
+                    <div class="name">ROUBAR</div>
+                    <div class="val-pos">+25</div>
+                </div>
+                <div class="btn-action" id="btn-chat-reset" onclick="exec('chat', 'reset', 0, this)">
+                    <div class="icon">🎉</div>
+                    <div class="name">ZERADO!</div>
+                    <div class="val-neg">RESET</div>
+                </div>
+                <div class="btn-action" id="btn-chat-win" onclick="exec('chat', 'win', 1, this)">
+                    <div class="icon">🐱</div>
+                    <div class="name">VITÓRIA</div>
+                    <div class="val-pos">+1 VIT</div>
+                </div>
+                <div class="btn-action" id="btn-chat-loss" onclick="exec('chat', 'win', -1, this)">
+                    <div class="icon">🎁</div>
+                    <div class="name">TIRAR</div>
+                    <div class="val-neg">-1 VIT</div>
+                </div>
+            </div>
+
+            <!-- BOTÕES: COLUNA CREATOR -->
+            <div class="actions-side actions-right">
+                <div class="btn-action" id="btn-creator-grow" onclick="exec('creator', 'add', 1, this)">
+                    <div class="icon">🟦</div>
+                    <div class="name">FREE GROW</div>
+                    <div class="val-pos">+1</div>
+                </div>
+                <div class="btn-action" id="btn-creator-note" onclick="exec('creator', 'add', 10, this)">
+                    <div class="icon">🎵</div>
+                    <div class="name">SUBIR</div>
+                    <div class="val-pos">+10</div>
+                </div>
+                <div class="btn-action" id="btn-creator-cookie" onclick="exec('creator', 'add', 30, this)">
+                    <div class="icon">🍪</div>
+                    <div class="name">SUBIR</div>
+                    <div class="val-pos">+30</div>
+                </div>
+                <div class="btn-action" id="btn-creator-cake" onclick="exec('creator', 'sub', 20, this)">
+                    <div class="icon">🍰</div>
+                    <div class="name">DERRUBAR</div>
+                    <div class="val-neg">-20</div>
+                </div>
+                <div class="btn-action" id="btn-creator-crown" onclick="exec('creator', 'steal', 25, this)">
+                    <div class="icon">👑</div>
+                    <div class="name">ROUBAR</div>
+                    <div class="val-pos">+25</div>
+                </div>
+                <div class="btn-action" id="btn-creator-reset" onclick="exec('creator', 'reset', 0, this)">
+                    <div class="icon">💫</div>
+                    <div class="name">ZERADO!</div>
+                    <div class="val-neg">RESET</div>
+                </div>
+                <div class="btn-action" id="btn-creator-win" onclick="exec('creator', 'win', 1, this)">
+                    <div class="icon">🥊</div>
+                    <div class="name">VITÓRIA</div>
+                    <div class="val-pos">+1 VIT</div>
+                </div>
+                <div class="btn-action" id="btn-creator-loss" onclick="exec('creator', 'win', -1, this)">
+                    <div class="icon">⚡</div>
+                    <div class="name">TIRAR</div>
+                    <div class="val-neg">-1 VIT</div>
+                </div>
+            </div>
+
+            <div class="livecade-logo">▶ Livecade</div>
+        </div>
+    </div>
+
+    <script>
+        // ESTADO INICIAL ZERADO (SÓ AUMENTA COM COMENTÁRIOS OU PRESENTES)
+        const state = {
+            chatScore: 0,
+            creatorScore: 0,
+            chatWins: 0,
+            creatorWins: 0,
+            multiplier: 2
+        };
+
+        const valChatEl = document.getElementById('valChat');
+        const valCreatorEl = document.getElementById('valCreator');
+        const winsChatEl = document.getElementById('winsChat');
+        const winsCreatorEl = document.getElementById('winsCreator');
+        const multProgressEl = document.getElementById('multProgress');
+
+        // ÁUDIO RETRÔ
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(type) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'up') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(350, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'down') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                }
+            } catch(e) {}
+        }
+
+        // MOTOR CANVAS 3D
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let visualHeightChat = 0;
+        let visualHeightCreator = 0;
+        let gridOffset = 0;
+
+        function resize() {
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawRetroSun(x, y, radius, colorTop, colorBottom) {
+            ctx.save();
+            const grad = ctx.createLinearGradient(x, y - radius, x, y + radius);
+            grad.addColorStop(0, colorTop);
+            grad.addColorStop(1, colorBottom);
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            for (let i = 0; i < 7; i++) {
+                const cutY = y + (radius * 0.15) + (i * (radius * 0.85 / 7));
+                ctx.clearRect(x - radius - 5, cutY, (radius * 2) + 10, 2.5 + i * 1.5);
+            }
+            ctx.restore();
+        }
+
+        function draw3DTower(centerX, baseY, targetHeight, team) {
+            const width = 88;
+            const blockHeight = 13;
+            // Altura mínima base + altura dos blocos
+            const pixelH = Math.max(50, Math.min(380, 50 + (targetHeight * 1.5)));
+            const topY = baseY - pixelH;
+
+            const isRed = (team === 'red');
+            const colorMain = isRed ? '#e62447' : '#0099e6';
+            const colorDark = isRed ? '#8c0d23' : '#004c80';
+            const colorTop = isRed ? '#ff8598' : '#85e0ff';
+            const colorBorder = '#020305';
+
+            ctx.save();
+
+            // BLOCOS EMPILHADOS
+            const numBlocks = Math.floor(pixelH / blockHeight);
+            for (let b = 0; b < numBlocks; b++) {
+                const bY = baseY - (b * blockHeight) - blockHeight;
+
+                ctx.fillStyle = colorMain;
+                ctx.strokeStyle = colorBorder;
+                ctx.lineWidth = 2.5;
+
+                ctx.beginPath();
+                ctx.rect(centerX - width / 2, bY, width * 0.78,
