@@ -1,0 +1,17 @@
+{
+  "name": "cabo-de-guerra-tiktok-live",
+  "version": "1.0.0",
+  "description": "Jogo interativo para TikTok Live",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "tiktok-live-connector": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
